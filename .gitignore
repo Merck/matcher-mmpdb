@@ -1,0 +1,6 @@
+.vscode/
+.ipynb_checkpoints/
+*.pyc
+debug.log
+/tests/
+/internal_db_build/
