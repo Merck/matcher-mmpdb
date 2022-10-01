@@ -3662,8 +3662,8 @@ class CustomPostgresqlDatabase(PostgresqlDatabase):
             conn.set_client_encoding(encoding)
 
         ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print("Finishing _connect in peewee.py at " + ts)
-        print("Finishing _connect in peewee.py at " + ts, file=sys.stderr)
+        #print("Finishing _connect in peewee.py at " + ts)
+        #print("Finishing _connect in peewee.py at " + ts, file=sys.stderr)
 
         return conn
 
