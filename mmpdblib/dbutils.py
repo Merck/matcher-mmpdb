@@ -140,16 +140,16 @@ def open_postgres_database(database):
     import psycopg2
 
     # To use Postgres DB, pass in a string containing:
-    # each of the below things, separated by ':' characters:
+    # each of the below things, separated by '$' characters:
 
-    # 'postgres' (to trigger recognition as a postgres path)
     # schema name (string), designating the postgres DB schema to use
-    # For example, to use the default schema (public), the database argument would be postgres:public
-
-    arg_list = database.split(":")
+    # 'postgres' (to trigger recognition as a postgres path)
+    # For example, to use the default schema (public), the database argument would be public$postgres
+        
+    arg_list = database.split("$")
     assert len(arg_list) == 2
 
-    schema = arg_list[1]
+    schema = arg_list[0]
     conn = psycopg2.connect(
         host = os.getenv("POSTGRES_HOST"),
         port = os.getenv("POSTGRES_PORT"),
