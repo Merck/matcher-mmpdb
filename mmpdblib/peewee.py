@@ -3632,19 +3632,19 @@ class CustomPostgresqlDatabase(PostgresqlDatabase):
         if not psycopg2:
             raise ImproperlyConfigured('psycopg2 must be installed.')
         # To use Postgres DB, pass in a string containing:
-        # each of the below things, separated by '$' characters:
+        # each of the below things, separated by ':' characters:
 
-        # server domain
-        # port
-        # server name
-        # DB name
-        # password
-        # 'postgres' (to trigger recognition as an postgres path)
+        # 'postgres' (to trigger recognition as a postgres path)
+        # schema name (string), designating the postgres DB schema to use
+        # For example, to use the default schema (public), the database argument would be postgres:public
+        
+        arg_list = database.split(":")
+        assert len(arg_list) == 2
 
-        arg_list = database.split("$")
+        schema = arg_list[1]
         conn = psycopg2.connect(
-            host = arg_list[0],
-            port = arg_list[1],
+            host = os.getenv("POSTGRES_HOST")
+            port = os.getenv("POSTGRES_PORT")
             dbname = os.getenv("POSTGRES_DB"),
             user = os.getenv("POSTGRES_USER"),
             password = os.getenv("POSTGRES_PASSWORD"),
@@ -3654,6 +3654,8 @@ class CustomPostgresqlDatabase(PostgresqlDatabase):
             keepalives_interval = 2,
             keepalives_count = 2
         )
+        c = conn.cursor()
+        c.execute(f"SET search_path=%s", (schema,))
 
         if self.register_unicode:
             pg_extensions.register_type(pg_extensions.UNICODE, conn)
