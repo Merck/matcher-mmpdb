@@ -151,8 +151,8 @@ def open_postgres_database(database):
 
     schema = arg_list[1]
     conn = psycopg2.connect(
-        host = os.getenv("POSTGRES_HOST")
-        port = os.getenv("POSTGRES_PORT")
+        host = os.getenv("POSTGRES_HOST"),
+        port = os.getenv("POSTGRES_PORT"),
         dbname = os.getenv("POSTGRES_DB"),
         user = os.getenv("POSTGRES_USER"),
         password = os.getenv("POSTGRES_PASSWORD"),
