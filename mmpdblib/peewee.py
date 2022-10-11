@@ -3654,8 +3654,10 @@ class CustomPostgresqlDatabase(PostgresqlDatabase):
             keepalives_interval = 2,
             keepalives_count = 2
         )
-        c = conn.cursor()
-        c.execute(f"SET search_path=%s", (schema,))
+        if schema not in ["public", "None", ""]:
+            # Need to include public schema in search path in order for rdkit extension to work
+            c = conn.cursor()
+            c.execute("SET search_path=%s, public", (schema,))
 
         if self.register_unicode:
             pg_extensions.register_type(pg_extensions.UNICODE, conn)

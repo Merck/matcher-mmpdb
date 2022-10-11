@@ -45,6 +45,7 @@ from ._compat import basestring
 
 from . import peewee
 from psycopg2.extras import execute_values
+from psycopg2.extensions import AsIs
 
 SCHEMA_FILENAME = os.path.join(os.path.dirname(__file__), "schema.sql")
 CREATE_INDEX_FILENAME = os.path.join(os.path.dirname(__file__), "create_index.sql")
@@ -215,8 +216,17 @@ def create_schema_for_oracle(oracle_db):
     for statement in OracleConfig.AUTO_INC_statements:
         c.execute(statement)
 
-def create_schema_for_postgres(postgres_db):
+def create_schema_for_postgres(postgres_db, schema_name='public'):
     c = postgres_db.cursor()
+    if schema_name != 'public':
+        # AsIs is not safe from SQL injection
+        # If you enable the below CREATE SCHEMA, ensure that any write-permissioned postgres connection that can invoke mmpdb index does not accept untrusted user input for schema_name
+        # Maybe it's best to run CREATE SCHEMA manually from admin account
+
+        # You must uncomment the next line of code for any schema other than 'public' to work
+        #c.execute("CREATE SCHEMA %s", (AsIs(schema_name),))
+
+        c.execute("SET search_path=%s, public", (schema_name,))
     _execute_sql(c,
                  get_schema_for_database(PostgresConfig))
 

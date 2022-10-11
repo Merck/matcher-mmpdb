@@ -49,6 +49,7 @@ except ImportError:
 from .playhouse import db_url as playhouse_db_url
 
 from . import schema
+import psycopg2
 
 _sqlite_adapter = None
 def get_default_sqlite_adapter(quiet):
@@ -137,7 +138,6 @@ def open_oracle_database(filename):
     return db
 
 def open_postgres_database(database):
-    import psycopg2
 
     # To use Postgres DB, pass in a string containing:
     # each of the below things, separated by '$' characters:
@@ -162,8 +162,10 @@ def open_postgres_database(database):
         keepalives_interval = 2,
         keepalives_count = 2
     )
-    c = conn.cursor()
-    c.execute(f"SET search_path=%s", (schema,))
+    if schema not in ["public", "None", ""]:
+        # Need to include public schema in search path in order for rdkit extension to work
+        c = conn.cursor()
+        c.execute("SET search_path=%s, public", (schema,))
 
     return conn
 

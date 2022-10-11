@@ -737,7 +737,8 @@ def open_oracle_index_writer(filename, title):
 
 def open_postgres_index_writer(filename, title):
     db = dbutils.open_postgres_database(filename)
-    schema.create_schema_for_postgres(db)
+    schema_name = filename.split("$")[0]
+    schema.create_schema_for_postgres(db, schema_name=schema_name)
     conn = db.cursor()
    
     return PostgresIndexWriter(db, conn, title)
