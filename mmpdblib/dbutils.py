@@ -150,6 +150,8 @@ def open_postgres_database(database):
     assert len(arg_list) == 2
 
     schema = arg_list[0]
+    # Enforce lowercase schema names. This prevents headaches involving always needing to use quotes in subsequent SQL
+    schema = schema.lower()
     conn = psycopg2.connect(
         host = os.getenv("POSTGRES_HOST"),
         port = os.getenv("POSTGRES_PORT"),

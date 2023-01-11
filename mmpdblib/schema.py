@@ -223,6 +223,9 @@ def create_schema_for_postgres(postgres_db, schema_name='public'):
         # If you enable the below CREATE SCHEMA, ensure that any write-permissioned postgres connection that can invoke mmpdb index does not accept untrusted user input for schema_name
         # Maybe it's best to run CREATE SCHEMA manually from admin account
 
+        # Enforce lowercase schema names. This prevents headaches involving always needing to use quotes in subsequent SQL
+        schema_name = schema_name.lower()
+
         # You must uncomment the next line of code for any schema other than 'public' to work
         #c.execute("CREATE SCHEMA %s", (AsIs(schema_name),))
 
