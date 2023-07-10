@@ -292,7 +292,7 @@ CREATE TABLE query (
         """
 CREATE TABLE query_result (
     id SERIAL PRIMARY KEY,
-    query_id INTEGER REFERENCES query(id),
+    query_id INTEGER REFERENCES query(id) ON UPDATE CASCADE ON DELETE CASCADE,
     rule_id INTEGER REFERENCES rule(id),
     use_original_direction BOOLEAN,
     from_construct_id INTEGER REFERENCES from_construct(id),
