@@ -315,7 +315,7 @@ CREATE TABLE sketched_content (
 CREATE TABLE snapquery (
     id SERIAL PRIMARY KEY,
     version_id INTEGER,
-    query_id INTEGER REFERENCES query(id),
+    query_id INTEGER REFERENCES query(id) ON UPDATE CASCADE ON DELETE SET NULL,
     query_type VARCHAR(4000),
     transform_order VARCHAR(4000),
     mol1_sketched_content_id INTEGER REFERENCES sketched_content(id),
@@ -357,6 +357,9 @@ CREATE TABLE snapshot (
         "ALTER TABLE property_name ADD display_base VARCHAR(4000)",
         "ALTER TABLE property_name ADD display_unit VARCHAR(4000)",
         "ALTER TABLE property_name ADD change_displayed VARCHAR(4000)",
+		"""ALTER TABLE rule_environment_statistics ADD COLUMN query_id INT 
+CONSTRAINT restats_query_fk_id REFERENCES query(id)
+ON UPDATE CASCADE ON DELETE SET NULL""",
 
         "CREATE INDEX compound_clean_smiles_mol_idx ON compound USING gist(clean_smiles_mol)",
         # Use partial indexes for faster searching, because we know the num_frags (number of bond cuts in our query) ahead of the search
