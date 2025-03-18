@@ -203,8 +203,14 @@ def reaggregate_properties(dataset, property_name_ids, compound_values_for_prope
     all_pairs = dataset.iter_pairs(cursor=cursor)
     all_pairs = reporter.progress(all_pairs, "Computing aggregate statistics", num_pairs)
 
-    stats_info = []
+    # stats_info = []
     seen_rule_environment_ids = set()
+    existing_stats_ids = dataset.get_rule_environment_statistics_mapping(
+        property_name_ids, cursor=cursor)
+    seen_stats_ids = set()
+    num_updated = num_added = 0
+    t2 = time.time()
+    diff = t2 - t1
     for rule_environment_id, rule_environment_pairs in itertools.groupby(
             all_pairs, (lambda pair: pair.rule_environment_id)):
 
@@ -224,89 +230,98 @@ def reaggregate_properties(dataset, property_name_ids, compound_values_for_prope
                 deltas.append(value2-value1)
             if deltas:
                 stats = index_algorithm.compute_aggregate_values(deltas)
-                stats_info.append( (rule_environment_id, property_name_id, stats) )
+                # stats_info.append( (rule_environment_id, property_name_id, stats) )
+                key = (rule_environment_id, property_name_id)
+                stats_id = existing_stats_ids.get(key, None)
+                if stats_id is not None:
+                    dataset.update_rule_environment_statistics(stats_id, stats)
+                    seen_stats_ids.add(stats_id)
+                    num_updated += 1
+                else:
+                    dataset.add_rule_environment_statistics(rule_environment_id, property_name_id, stats)
+                    num_added += 1
 
-    t2 = time.time()
-    diff = t2 - t1
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print("Finished aggregating statistics at " + ts)
-    print("Finished aggregating statistics at " + ts, file=sys.stderr)
-    print("Aggregate statistics computing took (in seconds): " + str(diff))
-    # Need to figure out if the statistics exist or need to be created
-    reporter.report("Generated %d rule statistics (%d rule environments, %d properties)"
-                    % (len(stats_info), len(seen_rule_environment_ids), len(property_name_ids)))
-    reporter.update("Getting information about which rule statistics exist...")
+    # t2 = time.time()
+    # diff = t2 - t1
+    # ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # print("Finished aggregating statistics at " + ts)
+    # print("Finished aggregating statistics at " + ts, file=sys.stderr)
+    # print("Aggregate statistics computing took (in seconds): " + str(diff))
+    # # Need to figure out if the statistics exist or need to be created
+    # reporter.report("Generated %d rule statistics (%d rule environments, %d properties)"
+    #                 % (len(stats_info), len(seen_rule_environment_ids), len(property_name_ids)))
+    # reporter.update("Getting information about which rule statistics exist...")
+    #
+    # ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # print("Reconnecting in reaggregate_properties at: " + ts, file=sys.stderr)
+    # # Reconnect, because connection timeouts have occurred if the statistics aggregation takes longer than 3 hours
+    # dataset.mmpa_db.db.close()
+    # time_last_closed = time.time()
+    # dataset.mmpa_db.db.connect()
+    # cursor = dataset.mmpa_db.get_cursor()
+    #
+    # existing_stats_ids = dataset.get_rule_environment_statistics_mapping(
+    #     property_name_ids, cursor=cursor)
 
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print("Reconnecting in reaggregate_properties at: " + ts, file=sys.stderr)
-    # Reconnect, because connection timeouts have occurred if the statistics aggregation takes longer than 3 hours
-    dataset.mmpa_db.db.close()
-    time_last_closed = time.time()
-    dataset.mmpa_db.db.connect()
-    cursor = dataset.mmpa_db.get_cursor()
-
-    existing_stats_ids = dataset.get_rule_environment_statistics_mapping(
-        property_name_ids, cursor=cursor)
-
-    stats_info_progress = reporter.progress(
-        stats_info, "Updating statistics table", len(stats_info))
-    seen_stats_ids = set()
-    num_updated = num_added = 0
+    # stats_info_progress = reporter.progress(
+    #     stats_info, "Updating statistics table", len(stats_info))
+    # seen_stats_ids = set()
+    # num_updated = num_added = 0
     # Write in batches when using a DB server
-    if type(dataset.mmpa_db.db) in [peewee.OracleDatabase, peewee.CustomPostgresqlDatabase]:
-        ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print("Started batch statistics writing at " + ts)
-        print("Started batch statistics writing at " + ts, file=sys.stderr)
-        batch_size = 100000
-        for (rule_environment_id, property_name_id, stats) in stats_info_progress:
-            key = (rule_environment_id, property_name_id)
-            stats_id = existing_stats_ids.get(key, None)
-            # Need to reformat very large numbers, and very small floating point numbers, otherwise can get errors with Oracle / Postgres
-            stats = dataset.validate_statistics(stats)
-            if stats_id is not None:
-                dataset.update_rule_environment_statistics(stats_id, stats)
-                seen_stats_ids.add(stats_id)
-                num_updated += 1
-                if num_updated % batch_size == 0:
-                    dataset.batch_update_re_stats()
-                    # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
-                    dataset.mmpa_db.db.commit()
-                    if time.time() - time_last_closed > 3600:
-                        dataset.mmpa_db.db.close()
-                        time_last_closed = time.time()
-                        dataset.mmpa_db.db.connect()
-            else:
-                dataset.add_rule_environment_statistics(rule_environment_id, property_name_id, stats)
-                num_added += 1
-                if num_added % batch_size == 0:
-                    dataset.batch_insert_re_stats()
-                    # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
-                    dataset.mmpa_db.db.commit()
-                    if time.time() - time_last_closed > 3600:
-                        dataset.mmpa_db.db.close()
-                        time_last_closed = time.time()
-                        dataset.mmpa_db.db.connect()
-        if len(dataset.re_stats_updates) > 0:
-            dataset.batch_update_re_stats()
-        if len(dataset.re_stats_inserts) > 0:
-            dataset.batch_insert_re_stats()
-        # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
-        dataset.mmpa_db.db.commit()
-        if time.time() - time_last_closed > 3600:
-            dataset.mmpa_db.db.close()
-            time_last_closed = time.time()
-            dataset.mmpa_db.db.connect()
-    else:
-        for (rule_environment_id, property_name_id, stats) in stats_info_progress:
-            key = (rule_environment_id, property_name_id)
-            stats_id = existing_stats_ids.get(key, None)
-            if stats_id is not None:
-                dataset.update_rule_environment_statistics(stats_id, stats)
-                seen_stats_ids.add(stats_id)
-                num_updated += 1
-            else:
-                dataset.add_rule_environment_statistics(rule_environment_id, property_name_id, stats)
-                num_added += 1
+    # if type(dataset.mmpa_db.db) in [peewee.OracleDatabase, peewee.CustomPostgresqlDatabase]:
+    #     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #     print("Started batch statistics writing at " + ts)
+    #     print("Started batch statistics writing at " + ts, file=sys.stderr)
+    #     batch_size = 100000
+    #     for (rule_environment_id, property_name_id, stats) in stats_info_progress:
+    #         key = (rule_environment_id, property_name_id)
+    #         stats_id = existing_stats_ids.get(key, None)
+    #         # Need to reformat very large numbers, and very small floating point numbers, otherwise can get errors with Oracle / Postgres
+    #         stats = dataset.validate_statistics(stats)
+    #         if stats_id is not None:
+    #             dataset.update_rule_environment_statistics(stats_id, stats)
+    #             seen_stats_ids.add(stats_id)
+    #             num_updated += 1
+    #             if num_updated % batch_size == 0:
+    #                 dataset.batch_update_re_stats()
+    #                 # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
+    #                 dataset.mmpa_db.db.commit()
+    #                 if time.time() - time_last_closed > 3600:
+    #                     dataset.mmpa_db.db.close()
+    #                     time_last_closed = time.time()
+    #                     dataset.mmpa_db.db.connect()
+    #         else:
+    #             dataset.add_rule_environment_statistics(rule_environment_id, property_name_id, stats)
+    #             num_added += 1
+    #             if num_added % batch_size == 0:
+    #                 dataset.batch_insert_re_stats()
+    #                 # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
+    #                 dataset.mmpa_db.db.commit()
+    #                 if time.time() - time_last_closed > 3600:
+    #                     dataset.mmpa_db.db.close()
+    #                     time_last_closed = time.time()
+    #                     dataset.mmpa_db.db.connect()
+    #     if len(dataset.re_stats_updates) > 0:
+    #         dataset.batch_update_re_stats()
+    #     if len(dataset.re_stats_inserts) > 0:
+    #         dataset.batch_insert_re_stats()
+    #     # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
+    #     dataset.mmpa_db.db.commit()
+    #     if time.time() - time_last_closed > 3600:
+    #         dataset.mmpa_db.db.close()
+    #         time_last_closed = time.time()
+    #         dataset.mmpa_db.db.connect()
+    # else:
+    #     for (rule_environment_id, property_name_id, stats) in stats_info_progress:
+    #         key = (rule_environment_id, property_name_id)
+    #         stats_id = existing_stats_ids.get(key, None)
+    #         if stats_id is not None:
+    #             dataset.update_rule_environment_statistics(stats_id, stats)
+    #             seen_stats_ids.add(stats_id)
+    #             num_updated += 1
+    #         else:
+    #             dataset.add_rule_environment_statistics(rule_environment_id, property_name_id, stats)
+    #             num_added += 1
 
     t3 = time.time()
     diff = t3 - t2
