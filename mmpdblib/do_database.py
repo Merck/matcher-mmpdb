@@ -797,8 +797,13 @@ AND compound_property.property_name_id = update_batch.property_name_id
 (%s, %s, %s, %s, %s, %s) WHERE property_name.name = %s""", insert_values + [prop])
 
         for prop in set(properties.property_names) - seen_props:
-            c.execute("""UPDATE property_name SET (base, display_name, display_base, change_displayed) = 
+            if type(db.db) == peewee.CustomPostgresqlDatabase:
+                c.execute("""UPDATE property_name SET (base, display_name, display_base, change_displayed) = 
 ('raw', %s, 'raw', 'delta') WHERE property_name.name = %s""", (prop, prop))
+            else:
+                c.execute("""UPDATE property_name SET (base, display_name, display_base, change_displayed) = 
+('raw', ?, 'raw', 'delta') WHERE property_name.name = ?""", (prop, prop))
+
         
         reporter.update("Commiting changed ...")
         # It seems like the actual commit happens when peewee.py exits the context manager for the DB at this point
