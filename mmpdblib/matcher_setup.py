@@ -1,6 +1,4 @@
-import psycopg2
 from psycopg2.extras import execute_values
-import time
 from rdkit import Chem
 
 # Objective: setup everything needed in the DB beyond what's provided in the original mmpdb open source package
@@ -11,6 +9,7 @@ def extend_postgres_build(connection=None, cursor=None):
     c = cursor
 
     DDL_statements = [
+        "CREATE EXTENSION IF NOT EXISTS rdkit"
         # Create molecule columns for rdkit cartridge structure searching
         "ALTER TABLE compound ADD clean_smiles_mol mol",    
         "ALTER TABLE rule_smiles ADD smiles_mol mol",    

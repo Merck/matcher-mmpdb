@@ -800,9 +800,6 @@ AND compound_property.property_name_id = update_batch.property_name_id
             if type(db.db) == peewee.CustomPostgresqlDatabase:
                 c.execute("""UPDATE property_name SET (base, display_name, display_base, change_displayed) = 
 ('raw', %s, 'raw', 'delta') WHERE property_name.name = %s""", (prop, prop))
-            else:
-                c.execute("""UPDATE property_name SET (base, display_name, display_base, change_displayed) = 
-('raw', ?, 'raw', 'delta') WHERE property_name.name = ?""", (prop, prop))
 
         
         reporter.update("Commiting changed ...")

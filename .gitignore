@@ -4,3 +4,6 @@
 debug.log
 /tests/
 /internal_db_build/
+.venv
+.python-version
+requirements.txt
