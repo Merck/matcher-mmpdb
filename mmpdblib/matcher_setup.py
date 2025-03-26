@@ -6,7 +6,7 @@ from rdkit import Chem
 def matcher_setup_command(parser, args):
     db = dbutils.open_database_from_args_or_exit(args)
     cursor = db.get_cursor()
-    extend_postgres_build(db, cursor)
+    extend_postgres_build(cursor, cursor)
 
 # Objective: setup everything needed in the DB beyond what's provided in the original mmpdb open source package
 def extend_postgres_build(connection=None, cursor=None):
