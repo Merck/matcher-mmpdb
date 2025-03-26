@@ -1,5 +1,12 @@
+from . import dbutils
 from psycopg2.extras import execute_values
 from rdkit import Chem
+
+# mmpdb matcher_setup <filename>
+def matcher_setup_command(parser, args):
+    db = dbutils.open_database_from_args_or_exit(args)
+    cursor = db.get_cursor()
+    extend_postgres_build(db, cursor)
 
 # Objective: setup everything needed in the DB beyond what's provided in the original mmpdb open source package
 def extend_postgres_build(connection=None, cursor=None):
@@ -9,7 +16,7 @@ def extend_postgres_build(connection=None, cursor=None):
     c = cursor
 
     DDL_statements = [
-        "CREATE EXTENSION IF NOT EXISTS rdkit"
+        "CREATE EXTENSION IF NOT EXISTS rdkit",
         # Create molecule columns for rdkit cartridge structure searching
         "ALTER TABLE compound ADD clean_smiles_mol mol",    
         "ALTER TABLE rule_smiles ADD smiles_mol mol",    
@@ -350,12 +357,13 @@ CREATE TABLE snapshot (
         # We store base (i.e. log, negative log, or raw), units (e.g. M), and displayed names of properties here
         # API endpoints have been written to fetch values in certain formats, e.g. get the hERG IC50 in uM, but this property may have been loaded in as negative log of molarity
         # By definining and populating these columns, we will know what to do with respect to transforming the data to the desired format
-        "ALTER TABLE property_name ADD base VARCHAR(4000)",
+        "ALTER TABLE property_name ADD base VARCHAR(4000) DEFAULT 'raw'",
         "ALTER TABLE property_name ADD unit VARCHAR(4000)",
         "ALTER TABLE property_name ADD display_name VARCHAR(4000)",
-        "ALTER TABLE property_name ADD display_base VARCHAR(4000)",
+        "UPDATE property_name SET display_name = name",
+        "ALTER TABLE property_name ADD display_base VARCHAR(4000) DEFAULT 'raw'",
         "ALTER TABLE property_name ADD display_unit VARCHAR(4000)",
-        "ALTER TABLE property_name ADD change_displayed VARCHAR(4000)",
+        "ALTER TABLE property_name ADD change_displayed VARCHAR(4000) DEFAULT 'delta'",
 		"""ALTER TABLE rule_environment_statistics ADD COLUMN query_id INT 
 CONSTRAINT restats_query_fk_id REFERENCES query(id)
 ON UPDATE CASCADE ON DELETE SET NULL""",

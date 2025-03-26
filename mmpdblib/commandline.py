@@ -1060,6 +1060,20 @@ add_single_dataset_arguments(p)
 p.set_defaults(command=create_index_command,
                subparser=p)
 
+#### mmpdb matcher_setup
+p = matcher_setup_parser = subparsers.add_parser(
+    "matcher_setup",
+    help="Extended build logic for matcher web app",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+def matcher_setup_command(parser, args):
+    from . import matcher_setup
+    matcher_setup.matcher_setup_command(parser, args)
+
+add_single_dataset_arguments(p)
+p.set_defaults(command=matcher_setup_command,
+               subparser=p)
 ##### Help
 
 do_help.add_help_commands(subparsers)
