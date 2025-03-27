@@ -232,14 +232,6 @@ def reaggregate_properties(dataset, property_name_ids, compound_values_for_prope
 
     reporter.update("Getting information about which rule statistics exist...")
 
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print("Reconnecting in reaggregate_properties at: " + ts, file=sys.stderr)
-    # Reconnect, because connection timeouts have occurred if the statistics aggregation takes longer than 3 hours
-    dataset.mmpa_db.db.close()
-    time_last_closed = time.time()
-    dataset.mmpa_db.db.connect()
-    cursor = dataset.mmpa_db.get_cursor()
-
     existing_stats_ids = dataset.get_rule_environment_statistics_mapping(
         property_name_ids, cursor=cursor)
 
@@ -265,10 +257,6 @@ def reaggregate_properties(dataset, property_name_ids, compound_values_for_prope
                     dataset.batch_update_re_stats()
                     # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
                     dataset.mmpa_db.db.commit()
-                    if time.time() - time_last_closed > 3600:
-                        dataset.mmpa_db.db.close()
-                        time_last_closed = time.time()
-                        dataset.mmpa_db.db.connect()
             else:
                 dataset.add_rule_environment_statistics(rule_environment_id, property_name_id, stats)
                 num_added += 1
@@ -276,20 +264,12 @@ def reaggregate_properties(dataset, property_name_ids, compound_values_for_prope
                     dataset.batch_insert_re_stats()
                     # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
                     dataset.mmpa_db.db.commit()
-                    if time.time() - time_last_closed > 3600:
-                        dataset.mmpa_db.db.close()
-                        time_last_closed = time.time()
-                        dataset.mmpa_db.db.connect()
         if len(dataset.re_stats_updates) > 0:
             dataset.batch_update_re_stats()
         if len(dataset.re_stats_inserts) > 0:
             dataset.batch_insert_re_stats()
         # Commit after each batch, trying to avoid enormous inserts that can take up all temp space before final commit
         dataset.mmpa_db.db.commit()
-        if time.time() - time_last_closed > 3600:
-            dataset.mmpa_db.db.close()
-            time_last_closed = time.time()
-            dataset.mmpa_db.db.connect()
     else:
         for (rule_environment_id, property_name_id, stats) in stats_info:
             key = (rule_environment_id, property_name_id)
